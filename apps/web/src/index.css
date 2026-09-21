@@ -1,0 +1,171 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Tajawal:wght@400;500;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-ink: #0f283c;
+  --color-surface: #f8f8f6;
+  --color-surface-alt: #f9f9f7;
+  --color-brand: #03ab82;
+  --color-muted: #6d737b;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+}
+
+.app-shell[dir="rtl"] {
+  font-family: "Tajawal", sans-serif;
+  font-weight: 500;
+}
+
+.app-shell[dir="rtl"] h1,
+.app-shell[dir="rtl"] h2,
+.app-shell[dir="rtl"] h3,
+.app-shell[dir="rtl"] button,
+.app-shell[dir="rtl"] select {
+  font-weight: 700;
+}
+
+.app-shell[dir="ltr"] {
+  font-family: "Inter", sans-serif;
+}
+
+.app-shell {
+  background-color: var(--color-surface) !important;
+  color: var(--color-ink);
+}
+
+.brand-header .header-brand-title,
+.brand-header .header-control,
+.brand-header .header-control select {
+  color: #fbb615 !important;
+}
+
+.brand-header .header-brand-subtitle {
+  color: #f8f8f6 !important;
+}
+
+.app-shell .bg-white,
+.app-shell .bg-white\/95 {
+  background-color: var(--color-surface) !important;
+}
+
+.app-shell .bg-slate-50,
+.app-shell .bg-slate-100 {
+  background-color: var(--color-surface-alt) !important;
+}
+
+.app-shell .bg-slate-900 {
+  background-color: var(--color-ink) !important;
+}
+
+.app-shell .text-slate-900,
+.app-shell .text-slate-800 {
+  color: var(--color-ink) !important;
+}
+
+.app-shell .text-slate-700,
+.app-shell .text-slate-600 {
+  color: var(--color-muted) !important;
+}
+
+.app-shell .border-slate-200,
+.app-shell .border-slate-300 {
+  border-color: color-mix(
+    in srgb,
+    var(--color-ink) 16%,
+    transparent
+  ) !important;
+}
+
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100svh;
+}
+
+.mobile-report-cta {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+}
+
+.search-shell {
+  isolation: isolate;
+}
+
+@keyframes search-suggestions-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.search-suggestions {
+  animation: search-suggestions-in 160ms ease-out;
+}
+
+.leaflet-container {
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+@keyframes selected-pin-drop {
+  0% {
+    opacity: 0.25;
+    transform: rotate(-45deg) translate(0, -12px) scale(0.72);
+  }
+  65% {
+    opacity: 1;
+    transform: rotate(-45deg) translate(0, 2px) scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(-45deg) translate(0, 0) scale(1);
+  }
+}
+
+@keyframes report-cta-jump {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-8px);
+  }
+  65% {
+    transform: translateY(2px);
+  }
+}
+
+.selected-pin {
+  animation: selected-pin-drop 500ms ease-out;
+  transform-origin: 50% 100%;
+}
+
+.report-cta-jump {
+  animation: report-cta-jump 500ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
