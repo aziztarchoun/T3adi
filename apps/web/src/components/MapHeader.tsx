@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { LANGUAGES, languageLabels, type Language } from "../i18n";
 
 interface MapHeaderProps {
@@ -21,6 +22,29 @@ export default function MapHeader({
   languageLabel,
   appName,
 }: MapHeaderProps) {
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
+  const languageMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!languageMenuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!languageMenuRef.current?.contains(event.target as Node)) {
+        setLanguageMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLanguageMenuOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [languageMenuOpen]);
+
   return (
     <header
       dir="ltr"
@@ -51,23 +75,49 @@ export default function MapHeader({
         </div>
 
         <div className="pointer-events-auto ml-auto flex items-center gap-2.5">
-          <label className="header-control flex h-12 items-center rounded-xl border border-[#FBB615]/40 bg-[#0F283C] px-3 text-sm shadow-sm transition-shadow focus-within:ring-2 focus-within:ring-[#FBB615]">
-            <span className="sr-only">{languageLabel}</span>
-            <select
-              value={language}
-              onChange={(event) =>
-                onLanguageChange(event.target.value as Language)
-              }
+          <div ref={languageMenuRef} className="relative">
+            <button
+              type="button"
               aria-label={languageLabel}
-              className="max-w-[100px] bg-transparent font-semibold outline-none"
+              aria-haspopup="menu"
+              aria-expanded={languageMenuOpen}
+              onClick={() => setLanguageMenuOpen((open) => !open)}
+              className="header-control flex h-12 items-center gap-2 rounded-xl border border-[#FBB615]/40 bg-[#0F283C] px-3 text-sm font-semibold shadow-sm transition-colors hover:bg-[#173b55] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBB615]"
             >
-              {LANGUAGES.map((option) => (
-                <option key={option} value={option}>
-                  {languageLabels[option]}
-                </option>
-              ))}
-            </select>
-          </label>
+              <span>{languageLabels[language]}</span>
+              <span aria-hidden="true" className="text-xs">
+                {languageMenuOpen ? "▲" : "▼"}
+              </span>
+            </button>
+            {languageMenuOpen && (
+              <div
+                role="menu"
+                aria-label={languageLabel}
+                className="absolute right-0 top-[calc(100%+0.5rem)] min-w-36 overflow-hidden rounded-xl border border-[#0F283C]/15 bg-[#F8F8F6] p-1 shadow-[0_12px_30px_rgba(15,40,60,0.22)]"
+              >
+                {LANGUAGES.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={language === option}
+                    onClick={() => {
+                      onLanguageChange(option);
+                      setLanguageMenuOpen(false);
+                    }}
+                    className={`flex min-h-11 w-full items-center justify-between rounded-lg px-3 text-start text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0F283C] ${
+                      language === option
+                        ? "bg-[#0F283C] font-bold text-[#FBB615]"
+                        : "text-[#0F283C] hover:bg-[#0F283C]/10"
+                    }`}
+                  >
+                    <span>{languageLabels[option]}</span>
+                    {language === option && <span aria-hidden="true">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             type="button"
             onClick={onMenuOpen}

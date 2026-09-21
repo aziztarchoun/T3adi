@@ -17,6 +17,30 @@ const WEB_BASE_URL =
       env?: Record<string, string | undefined>;
     }
   ).env?.BASE_URL ?? "/";
+const IS_DEVELOPMENT = Boolean(
+  (
+    import.meta as ImportMeta & {
+      env?: { DEV?: boolean };
+    }
+  ).env?.DEV,
+);
+const SAVED_LOCATION_KEY = "t3adi-user-location";
+
+function hasSavedLocation() {
+  if (IS_DEVELOPMENT) return false;
+
+  try {
+    const savedLocation = localStorage.getItem(SAVED_LOCATION_KEY);
+    if (!savedLocation) return false;
+    const parsed = JSON.parse(savedLocation) as {
+      lat?: unknown;
+      lng?: unknown;
+    };
+    return typeof parsed.lat === "number" && typeof parsed.lng === "number";
+  } catch {
+    return false;
+  }
+}
 
 function BottomSheet({
   children,
@@ -77,6 +101,10 @@ function BottomSheet({
 
 export default function MapPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [locationPromptOpen, setLocationPromptOpen] = useState(
+    () => !hasSavedLocation(),
+  );
+  const [locationRequesting, setLocationRequesting] = useState(false);
   const [reportFormOpen, setReportFormOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<ReportDto | null>(null);
   const [language, setLanguage] = useState<Language>("fr");
@@ -163,22 +191,38 @@ export default function MapPage() {
   }, [reportFormOpen, selectedReport]);
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      return;
-    }
+    if (!locationPromptOpen) return;
 
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        const nextLocation = { lat: coords.latitude, lng: coords.longitude };
-        setUserLocation(nextLocation);
-        setDraftLocation(nextLocation);
-      },
-      () => {
-        setUserLocation(null);
-        setDraftLocation(DEFAULT_LOCATION);
-      },
-      { enableHighAccuracy: true, timeout: 8000 },
-    );
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLocationPromptOpen(false);
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [locationPromptOpen]);
+
+  useEffect(() => {
+    if (IS_DEVELOPMENT) return;
+
+    try {
+      const savedLocation = localStorage.getItem(SAVED_LOCATION_KEY);
+      if (!savedLocation) return;
+
+      const parsed = JSON.parse(savedLocation) as {
+        lat?: unknown;
+        lng?: unknown;
+      };
+      if (typeof parsed.lat !== "number" || typeof parsed.lng !== "number") {
+        return;
+      }
+
+      const location = { lat: parsed.lat, lng: parsed.lng };
+      setUserLocation(location);
+      setDraftLocation(location);
+      setLocationPromptOpen(false);
+    } catch {
+      localStorage.removeItem(SAVED_LOCATION_KEY);
+    }
   }, []);
 
   const createReportMutation = useMutation({
@@ -213,6 +257,37 @@ export default function MapPage() {
     setActionMessage(null);
     setReportFormOpen(true);
   };
+
+  function handleAllowLocation() {
+    if (!navigator.geolocation) {
+      setLocationPromptOpen(false);
+      return;
+    }
+
+    setLocationRequesting(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const nextLocation = { lat: coords.latitude, lng: coords.longitude };
+        setUserLocation(nextLocation);
+        setDraftLocation(nextLocation);
+        if (!IS_DEVELOPMENT) {
+          localStorage.setItem(
+            SAVED_LOCATION_KEY,
+            JSON.stringify(nextLocation),
+          );
+        }
+        setLocationRequesting(false);
+        setLocationPromptOpen(false);
+      },
+      () => {
+        setUserLocation(null);
+        setDraftLocation(DEFAULT_LOCATION);
+        setLocationRequesting(false);
+        setLocationPromptOpen(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
+    );
+  }
 
   const handleMapSelection = (location: { lat: number; lng: number }) => {
     setSearchSuggestions([]);
@@ -299,6 +374,63 @@ export default function MapPage() {
         onClose={() => setSidebarOpen(false)}
         language={language}
       />
+
+      {locationPromptOpen && (
+        <div
+          className="fixed inset-0 z-[1700] flex items-center justify-center bg-[#0F283C]/45 p-4"
+          onClick={() => setLocationPromptOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="location-prompt-title"
+            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2
+                  id="location-prompt-title"
+                  className="text-xl font-bold text-slate-900"
+                >
+                  Localisation
+                </h2>
+                <div className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
+                  <p dir="rtl">{translations.ar.locationPromptBody}</p>
+                  <p dir="ltr">{translations.fr.locationPromptBody}</p>
+                  <p dir="ltr">{translations.en.locationPromptBody}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocationPromptOpen(false)}
+                aria-label={copy.close}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-xl text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+              >
+                <span aria-hidden="true">✕</span>
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleAllowLocation}
+                disabled={locationRequesting}
+                className="min-h-12 rounded-xl bg-green-500 px-4 text-sm font-bold text-white transition-colors hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:cursor-wait disabled:opacity-70"
+              >
+                {locationRequesting ? copy.locationRequesting : "Autoriser"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocationPromptOpen(false)}
+                disabled={locationRequesting}
+                className="min-h-12 rounded-xl bg-red-500 text-sm font-bold text-slate-100 transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:opacity-60"
+              >
+                Continuer sans localisation
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form
         onSubmit={handleSearch}

@@ -12,6 +12,7 @@ import type { ReportDto } from "@road-safety-map/shared";
 
 const TUNIS_CENTER: [number, number] = [36.8065, 10.1815];
 const DEFAULT_ZOOM = 12;
+const USER_LOCATION_ZOOM = 14;
 
 const markerColors: Record<string, string> = {
   safe: "#22c55e",
@@ -56,6 +57,23 @@ function SearchLocationHandler({
     map.panTo([location.lat, location.lng], {
       animate: true,
       duration: 0.8,
+    });
+  }, [location, map]);
+
+  return null;
+}
+
+function UserLocationHandler({
+  location,
+}: {
+  location?: { lat: number; lng: number } | null;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!location) return;
+    map.setView([location.lat, location.lng], USER_LOCATION_ZOOM, {
+      animate: false,
     });
   }, [location, map]);
 
@@ -121,6 +139,7 @@ export default function MapView({
     >
       <MapClickHandler onMapClick={onMapClick} />
       <SearchLocationHandler location={searchLocation} />
+      <UserLocationHandler location={userLocation} />
 
       <TileLayer
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"

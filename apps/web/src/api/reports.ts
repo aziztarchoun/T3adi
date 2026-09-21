@@ -9,7 +9,9 @@ const API_BASE_URL =
     ?.VITE_API_BASE_URL ?? "";
 
 export async function fetchReports(): Promise<ReportDto[]> {
-  const response = await fetch(`${API_BASE_URL}/api/reports`);
+  const response = await fetch(`${API_BASE_URL}/api/reports`, {
+    signal: AbortSignal.timeout(8000),
+  });
 
   if (!response.ok) {
     throw new Error("Failed to load reports");

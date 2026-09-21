@@ -6,5 +6,6 @@ export function useReports() {
     queryKey: ["reports"],
     queryFn: fetchReports,
     staleTime: 30_000,
+    retry: false,
   });
 }

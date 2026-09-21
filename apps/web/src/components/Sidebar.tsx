@@ -45,17 +45,17 @@ export default function Sidebar({ open, onClose, language }: SidebarProps) {
         aria-label={copy.menu}
         aria-hidden={!open}
         dir={language === "ar" ? "rtl" : "ltr"}
-        className={`fixed right-0 top-0 z-[1500] h-full w-64 transform bg-white shadow-lg transition-transform duration-200 ${
+        className={`t3adi-sidebar fixed right-0 top-0 z-[1500] h-full w-64 transform text-[#F8F8F6] shadow-[0_0_28px_rgba(15,40,60,0.35)] transition-transform duration-200 ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between border-b p-4">
-          <span className="font-medium text-gray-900">{copy.appName}</span>
+        <div className="t3adi-sidebar-header flex items-center justify-between p-4">
+          <span className="font-bold text-[#FBB615]">{copy.appName}</span>
           <button
             type="button"
             onClick={onClose}
             aria-label={copy.close}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-xl text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-xl text-[#FBB615] transition-colors hover:bg-[#FBB615]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBB615]"
           >
             <span aria-hidden="true">✕</span>
           </button>
@@ -65,7 +65,7 @@ export default function Sidebar({ open, onClose, language }: SidebarProps) {
           <button
             type="button"
             onClick={() => setShowAbout(true)}
-            className="min-h-11 rounded px-3 py-2 text-start text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+            className="min-h-11 rounded-lg px-3 py-2 text-start text-[#F8F8F6] transition-colors hover:bg-[#FBB615]/15 hover:text-[#FBB615] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBB615]"
           >
             {copy.about}
           </button>
@@ -74,7 +74,7 @@ export default function Sidebar({ open, onClose, language }: SidebarProps) {
             href={GITHUB_REPO_URL}
             target="_blank"
             rel="noreferrer"
-            className="flex min-h-11 items-center rounded px-3 py-2 text-start text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+            className="flex min-h-11 items-center rounded-lg px-3 py-2 text-start text-[#F8F8F6] transition-colors hover:bg-[#FBB615]/15 hover:text-[#FBB615] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBB615]"
           >
             {copy.github}
           </a>
@@ -83,7 +83,7 @@ export default function Sidebar({ open, onClose, language }: SidebarProps) {
             href={`${GITHUB_REPO_URL}/issues/new`}
             target="_blank"
             rel="noreferrer"
-            className="flex min-h-11 items-center rounded px-3 py-2 text-start text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+            className="flex min-h-11 items-center rounded-lg px-3 py-2 text-start text-[#F8F8F6] transition-colors hover:bg-[#FBB615]/15 hover:text-[#FBB615] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBB615]"
           >
             {copy.reportSiteIssue}
           </a>
@@ -102,27 +102,26 @@ export default function Sidebar({ open, onClose, language }: SidebarProps) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="about-title"
-            className="max-w-md rounded-lg bg-white p-6 shadow-xl"
+            className="t3adi-sidebar max-w-md rounded-2xl p-6 text-[#F8F8F6] shadow-[0_12px_30px_rgba(15,40,60,0.35)]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-start justify-between gap-3">
-              <h2
-                id="about-title"
-                className="text-lg font-medium text-gray-900"
-              >
+              <h2 id="about-title" className="text-lg font-bold text-[#FBB615]">
                 {copy.about}
               </h2>
               <button
                 type="button"
                 onClick={() => setShowAbout(false)}
                 aria-label={copy.close}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-xl text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-xl text-[#FBB615] transition-colors hover:bg-[#FBB615]/15 hover:text-[#FBB615] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBB615]"
               >
                 <span aria-hidden="true">✕</span>
               </button>
             </div>
-            <p className="mb-3 text-sm text-gray-700">{copy.aboutText}</p>
-            <p className="mb-4 text-sm text-gray-700">{copy.communityNotice}</p>
+            <p className="mb-3 text-sm text-[#F8F8F6]/85">{copy.aboutText}</p>
+            <p className="mb-4 text-sm text-[#F8F8F6]/85">
+              {copy.communityNotice}
+            </p>
           </div>
         </div>
       )}

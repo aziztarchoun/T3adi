@@ -55,6 +55,21 @@ body {
   color: #f8f8f6 !important;
 }
 
+.brand-header img {
+  display: block;
+  max-height: 3rem;
+  max-width: 3rem;
+}
+
+.t3adi-sidebar {
+  background-color: #0f283c !important;
+  color: #f8f8f6 !important;
+}
+
+.t3adi-sidebar-header {
+  border-bottom: 1px solid rgb(251 182 21 / 25%);
+}
+
 .app-shell .bg-white,
 .app-shell .bg-white\/95 {
   background-color: var(--color-surface) !important;
