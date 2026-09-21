@@ -72,6 +72,18 @@ address printed by Vite, for example `http://192.168.0.118:5173`.
 See [`.env.example`](.env.example) for every environment variable and what
 it's for.
 
+## Share the MVP
+
+The frontend is deployed automatically to GitHub Pages after pushes to
+`main`:
+
+<https://aziztarchoun.github.io/T3adi/>
+
+GitHub Pages hosts the frontend only. To enable live reports and search on the
+shared site, deploy the API separately and add a repository variable named
+`VITE_API_BASE_URL` containing its public HTTPS URL. Local development uses
+the Vite proxy and does not need this variable.
+
 ## Project structure
 
 ```
