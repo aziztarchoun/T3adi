@@ -11,6 +11,12 @@ import { useReports } from "../hooks/useReports";
 import { translations, type Language } from "../i18n";
 
 const DEFAULT_LOCATION = { lat: 36.8065, lng: 10.1815 };
+const WEB_BASE_URL =
+  (
+    import.meta as ImportMeta & {
+      env?: Record<string, string | undefined>;
+    }
+  ).env?.BASE_URL ?? "/";
 
 function BottomSheet({
   children,
@@ -254,7 +260,7 @@ export default function MapPage() {
         language={language}
         onLanguageChange={setLanguage}
         onMenuOpen={() => setSidebarOpen(true)}
-        logoSrc="/assets/logo%20white.svg"
+        logoSrc={`${WEB_BASE_URL}assets/logo%20white.svg`}
         disclaimer={copy.disclaimer}
         menuLabel={copy.menu}
         languageLabel={copy.chooseLanguage}
