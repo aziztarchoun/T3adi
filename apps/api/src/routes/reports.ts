@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import {
+  castVoteSchema,
   createReportSchema,
   type ReportDto,
   type ReportType,
@@ -41,6 +42,17 @@ const reports: ReportDto[] = [
 
 const router = Router();
 
+function refreshReportConfidence(report: ReportDto) {
+  const totalVotes = report.confirmationCount + report.disputeCount;
+  report.confidence = totalVotes
+    ? Math.round((report.confirmationCount / totalVotes) * 100)
+    : 0;
+
+  if (report.status !== "resolved") {
+    report.status = report.confidence < 15 ? "expired" : "active";
+  }
+}
+
 router.get("/", (_req, res) => {
   res.json(reports);
 });
@@ -75,6 +87,38 @@ router.post("/", (req, res) => {
 
   reports.unshift(report);
   return res.status(201).json(report);
+});
+
+router.post("/:id/confirmations", (req, res) => {
+  const parsed = castVoteSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "Invalid confirmation vote",
+      details: parsed.error.flatten(),
+    });
+  }
+
+  const report = reports.find((candidate) => candidate.id === req.params.id);
+  if (!report) {
+    return res.status(404).json({ error: "Report not found" });
+  }
+
+  const now = new Date().toISOString();
+  if (parsed.data.vote === "confirm") {
+    report.confirmationCount += 1;
+    report.lastConfirmedAt = now;
+    report.freshnessSummary = "Confirmed just now";
+  } else if (parsed.data.vote === "dispute") {
+    report.disputeCount += 1;
+    report.freshnessSummary = "Disputed just now";
+  } else {
+    report.status = "resolved";
+    report.lastConfirmedAt = now;
+    report.freshnessSummary = "Marked clear just now";
+  }
+
+  refreshReportConfidence(report);
+  return res.json(report);
 });
 
 export default router;

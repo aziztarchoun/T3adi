@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import type { ReportDto } from "@road-safety-map/shared";
-import { createReport } from "../api/reports";
+import type { ReportDto, ConfirmationVote } from "@road-safety-map/shared";
+import { castReportVote, createReport } from "../api/reports";
 import { searchPlaces, type SearchSuggestion } from "../api/search";
 import MapView from "../components/MapView";
 import MapHeader from "../components/MapHeader";
@@ -187,6 +187,22 @@ export default function MapPage() {
       queryClient.invalidateQueries({ queryKey: ["reports"] });
       setReportFormOpen(false);
       setSelectedReport(null);
+      setActionMessage("success");
+    },
+    onError: () => setActionMessage("error"),
+  });
+
+  const voteMutation = useMutation({
+    mutationFn: ({
+      reportId,
+      vote,
+    }: {
+      reportId: string;
+      vote: ConfirmationVote;
+    }) => castReportVote(reportId, { vote }),
+    onSuccess: (updatedReport) => {
+      setSelectedReport(updatedReport);
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
       setActionMessage("success");
     },
     onError: () => setActionMessage("error"),
@@ -414,12 +430,26 @@ export default function MapPage() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
+                disabled={voteMutation.isPending}
+                onClick={() =>
+                  voteMutation.mutate({
+                    reportId: selectedReport.id,
+                    vote: "confirm",
+                  })
+                }
                 className="min-h-[48px] rounded-xl bg-slate-900 px-3 text-sm font-medium text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
               >
                 {copy.stillThere}
               </button>
               <button
                 type="button"
+                disabled={voteMutation.isPending}
+                onClick={() =>
+                  voteMutation.mutate({
+                    reportId: selectedReport.id,
+                    vote: "resolved",
+                  })
+                }
                 className="min-h-[48px] rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
               >
                 {copy.clearNow}

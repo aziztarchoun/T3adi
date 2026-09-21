@@ -44,45 +44,6 @@ function createPinIcon(color: string, animated = false) {
   });
 }
 
-function GestureZoom() {
-  const map = useMap();
-
-  useEffect(() => {
-    let accumulatedDelta = 0;
-    const container = map.getContainer();
-
-    const handleWheel = (event: WheelEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-
-      const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
-      accumulatedDelta += delta;
-
-      if (Math.abs(accumulatedDelta) < 40) return;
-
-      const steps = Math.max(
-        1,
-        Math.min(3, Math.floor(Math.abs(accumulatedDelta) / 100)),
-      );
-      if (accumulatedDelta < 0) {
-        map.zoomIn(steps, { animate: true });
-      } else {
-        map.zoomOut(steps, { animate: true });
-      }
-      accumulatedDelta = 0;
-    };
-
-    map.scrollWheelZoom.disable();
-    container.addEventListener("wheel", handleWheel, { passive: false });
-
-    return () => {
-      container.removeEventListener("wheel", handleWheel);
-    };
-  }, [map]);
-
-  return null;
-}
-
 function SearchLocationHandler({
   location,
 }: {
@@ -153,16 +114,19 @@ export default function MapView({
       wheelPxPerZoomLevel={120}
       dragging
       touchZoom
-      zoomAnimation
-      fadeAnimation
-      markerZoomAnimation
+      preferCanvas
+      zoomAnimation={false}
+      fadeAnimation={false}
+      markerZoomAnimation={false}
     >
       <MapClickHandler onMapClick={onMapClick} />
-      <GestureZoom />
       <SearchLocationHandler location={searchLocation} />
 
       <TileLayer
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+        updateWhenIdle
+        keepBuffer={2}
+        detectRetina={false}
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
       />
 

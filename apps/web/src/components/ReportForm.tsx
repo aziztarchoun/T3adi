@@ -33,16 +33,23 @@ function HazardIcon({ type }: { type: (typeof typeOptions)[number]["icon"] }) {
     ),
     pothole: (
       <>
-        <path d="M4 25 10 7m18 18L22 7" />
-        <path d="M9 22c2-3 4-4 7-4s5 1 7 4c-3 2-5 3-7 3s-4-1-7-3Z" />
-        <path d="M12 21c1.5.8 2.8.8 4 .1 1.2.7 2.5.7 4-.1" />
+        <path d="M8 5h16l5 22H3L8 5Z" />
+        <ellipse
+          cx="16"
+          cy="20"
+          rx="5.5"
+          ry="3.2"
+          fill="currentColor"
+          stroke="none"
+        />
+        <path d="M11 20c1.8 1.3 3.2 1.3 5 0 1.8 1.3 3.2 1.3 5 0" />
       </>
     ),
     blocked: (
       <>
-        <path d="M4 25h24M8 25V9m16 16V9M5 9h22" />
-        <path d="m8 5 16 8M8 13 24 5" />
-        <path d="M8 17h16" />
+        <path d="M4 26h24M8 26V9m16 17V9" />
+        <path d="M5 9h22v8H5Z" />
+        <path d="m8 9 8 8m0-8-8 8m8-8 8 8m0-8-8 8" />
       </>
     ),
     accident: (

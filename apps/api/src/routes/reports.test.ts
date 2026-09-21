@@ -100,4 +100,25 @@ describe("reports API", () => {
     expect(response.status).toBe(400);
     expect(body.error).toContain("at least 2 characters");
   });
+
+  it("updates report confidence after a confirmation vote", async () => {
+    const baseUrl = await startServer();
+
+    const listResponse = await fetch(`${baseUrl}/api/reports`);
+    const reports = (await listResponse.json()) as Array<{ id: string }>;
+    const response = await fetch(
+      `${baseUrl}/api/reports/${reports[0].id}/confirmations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vote: "confirm" }),
+      },
+    );
+    const updated = (await response.json()) as Record<string, unknown>;
+
+    expect(response.status).toBe(200);
+    expect(updated.confirmationCount).toEqual(expect.any(Number));
+    expect(updated.lastConfirmedAt).toEqual(expect.any(String));
+    expect(updated.confidence).toEqual(expect.any(Number));
+  });
 });
