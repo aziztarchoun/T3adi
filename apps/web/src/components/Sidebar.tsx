@@ -120,7 +120,10 @@ export default function Sidebar({ open, onClose, language }: SidebarProps) {
             </div>
             <p className="mb-3 text-sm text-[#F8F8F6]/85">{copy.aboutText}</p>
             <p className="mb-4 text-sm text-[#F8F8F6]/85">
-              {copy.communityNotice}
+              {copy.communityNotice} 
+            </p>
+            <p className="text-xs text-[#F8F8F6]/85">
+              By Aziz Tarchoun
             </p>
           </div>
         </div>
