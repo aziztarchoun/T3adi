@@ -1,0 +1,13 @@
+node_modules
+apps/web
+dist
+build
+.git
+.env
+.env.local
+*.log
+.vscode
+.idea
+.DS_Store
+design assets
+docs

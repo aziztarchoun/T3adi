@@ -14,6 +14,27 @@ const TUNIS_CENTER: [number, number] = [36.8065, 10.1815];
 const DEFAULT_ZOOM = 12;
 const USER_LOCATION_ZOOM = 14;
 
+// MapTiler is our tile provider (see docs/PROJECT_PLAN.md Phase 3) —
+// a free-tier key that gets restricted to this site's domain in the
+// MapTiler dashboard, never a server secret. If no key is configured
+// (e.g. a contributor running the app locally without one yet), fall
+// back to CARTO's free tiles so the app still works out of the box.
+const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY;
+
+const TILE_URL = MAPTILER_KEY
+  ? `https://api.maptiler.com/maps/basic-v2/{z}/{x}/{y}{r}.png?key=${MAPTILER_KEY}`
+  : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+
+const TILE_ATTRIBUTION = MAPTILER_KEY
+  ? '&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+  : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+if (!MAPTILER_KEY && import.meta.env.DEV) {
+  console.warn(
+    "VITE_MAPTILER_KEY is not set — falling back to CARTO tiles. See .env.example.",
+  );
+}
+
 const markerColors: Record<string, string> = {
   safe: "#22c55e",
   caution: "#facc15",
@@ -142,11 +163,12 @@ export default function MapView({
       <UserLocationHandler location={userLocation} />
 
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+        url={TILE_URL}
         updateWhenIdle
         keepBuffer={2}
         detectRetina={false}
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        maxZoom={20}
+        attribution={TILE_ATTRIBUTION}
       />
 
       {userLocation && (

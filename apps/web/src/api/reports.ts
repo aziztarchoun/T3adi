@@ -4,9 +4,16 @@ import type {
   ReportDto,
 } from "@road-safety-map/shared";
 
-const API_BASE_URL =
-  (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
-    ?.VITE_API_BASE_URL ?? "";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+
+if (!API_BASE_URL && import.meta.env.PROD) {
+  // In production (e.g. GitHub Pages) there is no server behind this
+  // domain, so a relative /api/... path 404s. This warning exists so the
+  // failure is obvious in devtools instead of silently returning 404s.
+  console.warn(
+    "VITE_API_BASE_URL is not set — API requests will 404 on a static host. See README.md.",
+  );
+}
 
 export async function fetchReports(): Promise<ReportDto[]> {
   const response = await fetch(`${API_BASE_URL}/api/reports`, {

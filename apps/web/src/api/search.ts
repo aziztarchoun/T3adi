@@ -1,8 +1,6 @@
 import type { Language } from "../i18n";
 
-const API_BASE_URL =
-  (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
-    ?.VITE_API_BASE_URL ?? "";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export interface SearchSuggestion {
   placeId: string;
