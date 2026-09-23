@@ -1,6 +1,6 @@
 # T3adi?
 
-![github_image_logo](.\docs\github.png)
+![github_image_logo](docs\github.png)
 
 An open-source, community-driven map for reporting dangerous road conditions
 in Tunisia: flooding, potholes, blocked roads, and accidents or obstacles.
