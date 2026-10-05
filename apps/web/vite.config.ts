@@ -3,6 +3,7 @@ import { defineConfig } from "vite";
 
 export default defineConfig(({ mode }) => ({
   base: mode === "production" ? "/T3adi/" : "/",
+  envDir: "../..",
   plugins: [react()],
   server: {
     host: "0.0.0.0",

@@ -9,6 +9,7 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import type { ReportDto } from "@road-safety-map/shared";
+import type { ReportBounds } from "../api/reports";
 
 const TUNIS_CENTER: [number, number] = [36.8065, 10.1815];
 const DEFAULT_ZOOM = 12;
@@ -20,18 +21,23 @@ const USER_LOCATION_ZOOM = 14;
 // (e.g. a contributor running the app locally without one yet), fall
 // back to CARTO's free tiles so the app still works out of the box.
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY;
+const CARTO_KEY = import.meta.env.VITE_CARTO_KEY;
 
-const TILE_URL = MAPTILER_KEY
-  ? `https://api.maptiler.com/maps/basic-v2/{z}/{x}/{y}{r}.png?key=${MAPTILER_KEY}`
-  : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+const TILE_URL = CARTO_KEY
+  ? `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`
+  : MAPTILER_KEY
+    ? `https://api.maptiler.com/maps/basic-v2/{z}/{x}/{y}{r}.png?key=${MAPTILER_KEY}`
+    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 
-const TILE_ATTRIBUTION = MAPTILER_KEY
-  ? '&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
-  : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+const TILE_ATTRIBUTION = CARTO_KEY
+  ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  : MAPTILER_KEY
+    ? '&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+    : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
-if (!MAPTILER_KEY && import.meta.env.DEV) {
+if (!MAPTILER_KEY && !CARTO_KEY && import.meta.env.DEV) {
   console.warn(
-    "VITE_MAPTILER_KEY is not set — falling back to CARTO tiles. See .env.example.",
+    "No map tile key is set — CARTO may show an API key watermark. See .env.example.",
   );
 }
 
@@ -55,12 +61,13 @@ interface MapViewProps {
   searchLocation?: { lat: number; lng: number } | null;
   selectionPulse?: number;
   onReportSelect?: (report: ReportDto) => void;
+  onBoundsChange?: (bounds: ReportBounds) => void;
 }
 
 function createPinIcon(color: string, animated = false) {
   return L.divIcon({
-    className: "",
-    html: `<span class="${animated ? "selected-pin" : ""}" style="display:block;width:18px;height:18px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${color};border:2px solid rgba(255,255,255,0.96);box-shadow:0 2px 8px rgba(15,23,42,0.25);"></span>`,
+    className: "t3adi-pin-wrapper",
+    html: `<span class="t3adi-pin ${animated ? "selected-pin" : ""}" style="--pin-color:${color}"><span class="t3adi-pin-core"></span></span>`,
     iconSize: [18, 18],
     iconAnchor: [9, 18],
   });
@@ -116,6 +123,99 @@ function MapClickHandler({
   return null;
 }
 
+function MapSizeHandler() {
+  const map = useMap();
+
+  useEffect(() => {
+    const invalidate = () => map.invalidateSize({ animate: false });
+    const frame = window.requestAnimationFrame(invalidate);
+    window.addEventListener("resize", invalidate);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", invalidate);
+    };
+  }, [map]);
+
+  return null;
+}
+
+function MapViewportHandler({
+  onBoundsChange,
+}: {
+  onBoundsChange?: (bounds: ReportBounds) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!onBoundsChange) return;
+
+    const updateBounds = () => {
+      const bounds = map.getBounds();
+      onBoundsChange({
+        south: bounds.getSouth(),
+        west: bounds.getWest(),
+        north: bounds.getNorth(),
+        east: bounds.getEast(),
+      });
+    };
+
+    updateBounds();
+    map.on("moveend", updateBounds);
+    return () => {
+      map.off("moveend", updateBounds);
+    };
+  }, [map, onBoundsChange]);
+
+  return null;
+}
+
+function MapControls({
+  userLocation,
+}: {
+  userLocation?: { lat: number; lng: number } | null;
+}) {
+  const map = useMap();
+
+  return (
+    <div className="map-control-panel" aria-label="Map controls">
+      <button
+        type="button"
+        className="map-control-button"
+        aria-label="Zoom in"
+        title="Zoom in"
+        onClick={() => map.zoomIn()}
+      >
+        <span aria-hidden="true">+</span>
+      </button>
+      <button
+        type="button"
+        className="map-control-button"
+        aria-label="Zoom out"
+        title="Zoom out"
+        onClick={() => map.zoomOut()}
+      >
+        <span aria-hidden="true">−</span>
+      </button>
+      <button
+        type="button"
+        className="map-control-button map-control-location"
+        aria-label="Center on my location"
+        title="Center on my location"
+        disabled={!userLocation}
+        onClick={() => {
+          if (!userLocation) return;
+          map.flyTo([userLocation.lat, userLocation.lng], USER_LOCATION_ZOOM, {
+            duration: 0.7,
+          });
+        }}
+      >
+        <span aria-hidden="true">⌖</span>
+      </button>
+    </div>
+  );
+}
+
 export default function MapView({
   reports,
   userLocation,
@@ -125,6 +225,7 @@ export default function MapView({
   searchLocation,
   selectionPulse = 0,
   onReportSelect,
+  onBoundsChange,
 }: MapViewProps) {
   const markerRef = useRef<any>(null);
   const selectedPinIcon = useMemo(
@@ -147,6 +248,7 @@ export default function MapView({
       center={TUNIS_CENTER}
       zoom={DEFAULT_ZOOM}
       className="h-full w-full"
+      style={{ height: "100%", width: "100%" }}
       zoomControl={false}
       scrollWheelZoom
       wheelDebounceTime={40}
@@ -158,6 +260,9 @@ export default function MapView({
       fadeAnimation={false}
       markerZoomAnimation={false}
     >
+      <MapSizeHandler />
+      <MapViewportHandler onBoundsChange={onBoundsChange} />
+      <MapControls userLocation={userLocation} />
       <MapClickHandler onMapClick={onMapClick} />
       <SearchLocationHandler location={searchLocation} />
       <UserLocationHandler location={userLocation} />

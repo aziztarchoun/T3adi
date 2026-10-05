@@ -35,6 +35,15 @@ export type ReportStatus = (typeof REPORT_STATUSES)[number];
 export const CONFIRMATION_VOTES = ["confirm", "dispute", "resolved"] as const;
 export type ConfirmationVote = (typeof CONFIRMATION_VOTES)[number];
 
+export const REPORT_FLAG_REASONS = ["inaccurate", "spam", "offensive"] as const;
+export type ReportFlagReason = (typeof REPORT_FLAG_REASONS)[number];
+
+/** Request body for POST /api/reports/:id/flags */
+export const flagReportSchema = z.object({
+  reason: z.enum(REPORT_FLAG_REASONS),
+});
+export type FlagReportInput = z.infer<typeof flagReportSchema>;
+
 /** Request body for POST /api/reports */
 export const createReportSchema = z.object({
   lat: z.number().min(-90).max(90),

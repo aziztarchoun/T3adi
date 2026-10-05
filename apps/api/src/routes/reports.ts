@@ -1,63 +1,57 @@
-import { randomUUID } from "node:crypto";
-import { Router } from "express";
+import { Router, type Request } from "express";
+import { z } from "zod";
 import {
   castVoteSchema,
   createReportSchema,
-  type ReportDto,
-  type ReportType,
+  flagReportSchema,
+  REPORT_SEVERITIES,
+  REPORT_TYPES,
 } from "@road-safety-map/shared";
-
-const reports: ReportDto[] = [
-  {
-    id: "sample-flooding-1",
-    lat: 36.8065,
-    lng: 10.1815,
-    type: "flooding",
-    severity: "dangerous",
-    description: "Water pooling on the road after heavy rain.",
-    status: "active",
-    createdAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-    lastConfirmedAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-    confirmationCount: 3,
-    disputeCount: 0,
-    confidence: 84,
-    freshnessSummary: "Confirmed 5 minutes ago",
-  },
-  {
-    id: "sample-pothole-1",
-    lat: 36.82,
-    lng: 10.17,
-    type: "pothole",
-    severity: "caution",
-    description: "Large pothole near the bus stop.",
-    status: "active",
-    createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-    lastConfirmedAt: new Date(Date.now() - 1000 * 60 * 28).toISOString(),
-    confirmationCount: 2,
-    disputeCount: 1,
-    confidence: 58,
-    freshnessSummary: "Last confirmed 28 minutes ago",
-  },
-];
+import { writeRateLimit } from "../middleware/writeRateLimit.js";
+import {
+  castVote,
+  createReport,
+  flagReport,
+  listReports,
+} from "../services/reports.js";
 
 const router = Router();
-
-function refreshReportConfidence(report: ReportDto) {
-  const totalVotes = report.confirmationCount + report.disputeCount;
-  report.confidence = totalVotes
-    ? Math.round((report.confirmationCount / totalVotes) * 100)
-    : 0;
-
-  if (report.status !== "resolved") {
-    report.status = report.confidence < 15 ? "expired" : "active";
-  }
-}
-
-router.get("/", (_req, res) => {
-  res.json(reports);
+const boundsSchema = z.object({
+  south: z.coerce.number().min(-90).max(90),
+  west: z.coerce.number().min(-180).max(180),
+  north: z.coerce.number().min(-90).max(90),
+  east: z.coerce.number().min(-180).max(180),
+});
+const filterSchema = z.object({
+  type: z.enum(REPORT_TYPES).optional(),
+  severity: z.enum(REPORT_SEVERITIES).optional(),
 });
 
-router.post("/", (req, res) => {
+function deviceToken(req: Request) {
+  return req.get("x-device-token")?.trim() || undefined;
+}
+
+router.get("/", async (req, res, next) => {
+  try {
+    const hasBounds = ["south", "west", "north", "east"].some(
+      (key) => req.query[key] !== undefined,
+    );
+    const parsedBounds = hasBounds ? boundsSchema.safeParse(req.query) : null;
+    if (parsedBounds && !parsedBounds.success) {
+      return res.status(400).json({ error: "Invalid map bounds" });
+    }
+    const parsedFilters = filterSchema.safeParse(req.query);
+    if (!parsedFilters.success) {
+      return res.status(400).json({ error: "Invalid report filters" });
+    }
+
+    return res.json(await listReports(parsedBounds?.data, parsedFilters.data));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/", writeRateLimit, async (req, res, next) => {
   const parsed = createReportSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -67,29 +61,15 @@ router.post("/", (req, res) => {
     });
   }
 
-  const payload = parsed.data;
-  const now = new Date().toISOString();
-  const report: ReportDto = {
-    id: randomUUID(),
-    lat: payload.lat,
-    lng: payload.lng,
-    type: payload.type as ReportType,
-    severity: payload.severity,
-    description: payload.description ?? null,
-    status: "active",
-    createdAt: now,
-    lastConfirmedAt: now,
-    confirmationCount: 1,
-    disputeCount: 0,
-    confidence: 100,
-    freshnessSummary: "Just reported",
-  };
-
-  reports.unshift(report);
-  return res.status(201).json(report);
+  try {
+    const report = await createReport(parsed.data, deviceToken(req));
+    return res.status(201).json(report);
+  } catch (error) {
+    return next(error);
+  }
 });
 
-router.post("/:id/confirmations", (req, res) => {
+router.post("/:id/confirmations", writeRateLimit, async (req, res, next) => {
   const parsed = castVoteSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
@@ -98,27 +78,35 @@ router.post("/:id/confirmations", (req, res) => {
     });
   }
 
-  const report = reports.find((candidate) => candidate.id === req.params.id);
-  if (!report) {
-    return res.status(404).json({ error: "Report not found" });
+  try {
+    const report = await castVote(req.params.id, parsed.data, deviceToken(req));
+    if (!report) return res.status(404).json({ error: "Report not found" });
+    return res.json(report);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/:id/flags", writeRateLimit, async (req, res, next) => {
+  const parsed = flagReportSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "Invalid report flag",
+      details: parsed.error.flatten(),
+    });
   }
 
-  const now = new Date().toISOString();
-  if (parsed.data.vote === "confirm") {
-    report.confirmationCount += 1;
-    report.lastConfirmedAt = now;
-    report.freshnessSummary = "Confirmed just now";
-  } else if (parsed.data.vote === "dispute") {
-    report.disputeCount += 1;
-    report.freshnessSummary = "Disputed just now";
-  } else {
-    report.status = "resolved";
-    report.lastConfirmedAt = now;
-    report.freshnessSummary = "Marked clear just now";
+  try {
+    const flagged = await flagReport(
+      req.params.id,
+      parsed.data.reason,
+      deviceToken(req),
+    );
+    if (!flagged) return res.status(404).json({ error: "Report not found" });
+    return res.status(202).json({ status: "received" });
+  } catch (error) {
+    return next(error);
   }
-
-  refreshReportConfidence(report);
-  return res.json(report);
 });
 
 export default router;

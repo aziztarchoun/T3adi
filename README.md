@@ -33,15 +33,17 @@ API design all live in [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md).
 ## Current status
 
 The current MVP includes the interactive map, geolocation, multilingual search,
-report creation, severity states, and an in-memory API. PostgreSQL/PostGIS,
-authentication, moderation, and report verification are planned next and are
-tracked in [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md).
+Google Maps coordinate-link search, report creation, viewport-based report
+loading, anonymous device identity, persistent PostgreSQL/PostGIS storage, and
+community voting. Authentication, moderation, automated freshness decay, and
+route hazard checking remain planned and are tracked in
+[`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md).
 
 ## Tech stack
 
 - **Frontend**: React + TypeScript + Vite + Leaflet + Tailwind CSS
 - **Backend**: Node.js + Express + TypeScript
-- **Database (planned)**: PostgreSQL + PostGIS
+- **Database**: PostgreSQL + PostGIS
 - **Auth (planned)**: Google OAuth (optional) + anonymous device-based reporting
 
 ## Getting started (local development)
@@ -58,7 +60,7 @@ git clone https://github.com/aziztarchoun/T3adi.git
 cd T3adi
 npm install
 cp .env.example .env      # then fill in any values you need (see comments)
-docker compose up -d      # starts Postgres + PostGIS
+   docker compose up -d      # starts Postgres + PostGIS on localhost:55432
 ```
 
 Then, in separate terminals:

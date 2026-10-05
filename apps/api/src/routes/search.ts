@@ -4,6 +4,17 @@ import { z } from "zod";
 const router = Router();
 const cache = new Map<string, { expiresAt: number; results: SearchResult[] }>();
 const CACHE_TTL_MS = 2 * 60 * 1000;
+const CACHE_MAX_ENTRIES = 100;
+const SEARCH_TIMEOUT_MS = 8_000;
+
+const providerResultSchema = z.array(
+  z.object({
+    place_id: z.union([z.number(), z.string()]),
+    display_name: z.string().min(1),
+    lat: z.string(),
+    lon: z.string(),
+  }),
+);
 
 const searchQuerySchema = z.object({
   q: z.string().trim().min(2).max(120),
@@ -84,6 +95,7 @@ router.get("/", async (req, res) => {
   if (cached && cached.expiresAt > Date.now()) {
     return res.json({ results: cached.results });
   }
+  if (cached) cache.delete(cacheKey);
 
   try {
     const params = new URLSearchParams({
@@ -109,6 +121,7 @@ router.get("/", async (req, res) => {
           Accept: "application/json",
           "User-Agent": "t3adi-search/0.1",
         },
+        signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
       },
     );
 
@@ -116,14 +129,14 @@ router.get("/", async (req, res) => {
       return res.status(502).json({ error: "Search provider unavailable" });
     }
 
-    const providerResults = (await response.json()) as Array<{
-      place_id: number;
-      display_name: string;
-      lat: string;
-      lon: string;
-    }>;
+    const providerResults = providerResultSchema.safeParse(
+      await response.json(),
+    );
+    if (!providerResults.success) {
+      return res.status(502).json({ error: "Search provider unavailable" });
+    }
     const origin = lat !== undefined && lng !== undefined ? { lat, lng } : null;
-    const results = providerResults
+    const results = providerResults.data
       .map((result) => {
         const point = { lat: Number(result.lat), lng: Number(result.lon) };
         return {
@@ -133,6 +146,9 @@ router.get("/", async (req, res) => {
           distanceKm: origin ? distanceKm(point, origin) : null,
         };
       })
+      .filter(
+        (result) => Number.isFinite(result.lat) && Number.isFinite(result.lng),
+      )
       .sort((first, second) =>
         first.distanceKm !== null && second.distanceKm !== null
           ? first.distanceKm - second.distanceKm
@@ -140,6 +156,14 @@ router.get("/", async (req, res) => {
       )
       .slice(0, 8);
 
+    for (const [key, entry] of cache) {
+      if (entry.expiresAt <= Date.now()) cache.delete(key);
+    }
+    while (cache.size >= CACHE_MAX_ENTRIES) {
+      const oldestKey = cache.keys().next().value;
+      if (oldestKey === undefined) break;
+      cache.delete(oldestKey);
+    }
     cache.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL_MS, results });
     return res.json({ results });
   } catch {

@@ -1,7 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import type { ReportDto, ConfirmationVote } from "@road-safety-map/shared";
-import { castReportVote, createReport } from "../api/reports";
+import {
+  REPORT_SEVERITIES,
+  REPORT_TYPES,
+  type ConfirmationVote,
+  type ReportDto,
+  type ReportSeverity,
+  type ReportType,
+} from "@road-safety-map/shared";
+import { castReportVote, createReport, flagReport } from "../api/reports";
+import type { ReportBounds } from "../api/reports";
 import { searchPlaces, type SearchSuggestion } from "../api/search";
 import MapView from "../components/MapView";
 import MapHeader from "../components/MapHeader";
@@ -9,6 +17,7 @@ import ReportForm from "../components/ReportForm";
 import Sidebar from "../components/Sidebar";
 import { useReports } from "../hooks/useReports";
 import { translations, type Language } from "../i18n";
+import { parseGoogleMapsCoordinates } from "../utils/googleMaps";
 
 const DEFAULT_LOCATION = { lat: 36.8065, lng: 10.1815 };
 const WEB_BASE_URL =
@@ -109,7 +118,7 @@ export default function MapPage() {
   const [selectedReport, setSelectedReport] = useState<ReportDto | null>(null);
   const [language, setLanguage] = useState<Language>("fr");
   const [actionMessage, setActionMessage] = useState<
-    "success" | "error" | null
+    "success" | "error" | "flag-success" | null
   >(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchLocation, setSearchLocation] = useState<{
@@ -130,9 +139,25 @@ export default function MapPage() {
     lat: number;
     lng: number;
   } | null>(null);
+  const [reportBounds, setReportBounds] = useState<ReportBounds | null>(null);
+  const [reportTypeFilter, setReportTypeFilter] = useState<ReportType | "all">(
+    "all",
+  );
+  const [reportSeverityFilter, setReportSeverityFilter] = useState<
+    ReportSeverity | "all"
+  >("all");
   const skipSuggestionFetchRef = useRef(false);
   const queryClient = useQueryClient();
-  const { data: reports = [], isLoading, isError } = useReports();
+  const {
+    data: reports = [],
+    isLoading,
+    isError,
+  } = useReports(reportBounds, {
+    ...(reportTypeFilter === "all" ? {} : { type: reportTypeFilter }),
+    ...(reportSeverityFilter === "all"
+      ? {}
+      : { severity: reportSeverityFilter }),
+  });
   const copy = translations[language];
 
   useEffect(() => {
@@ -145,6 +170,12 @@ export default function MapPage() {
 
     const query = searchQuery.trim();
     if (query.length < 2) {
+      setSearchSuggestions([]);
+      setIsSuggesting(false);
+      return;
+    }
+
+    if (parseGoogleMapsCoordinates(query)) {
       setSearchSuggestions([]);
       setIsSuggesting(false);
       return;
@@ -252,6 +283,13 @@ export default function MapPage() {
     onError: () => setActionMessage("error"),
   });
 
+  const flagMutation = useMutation({
+    mutationFn: (reportId: string) =>
+      flagReport(reportId, { reason: "inaccurate" }),
+    onSuccess: () => setActionMessage("flag-success"),
+    onError: () => setActionMessage("error"),
+  });
+
   const handleReportButtonClick = () => {
     setSelectedReport(null);
     setActionMessage(null);
@@ -322,6 +360,15 @@ export default function MapPage() {
     setIsSearching(true);
     setSearchError(false);
 
+    const googleMapsLocation = parseGoogleMapsCoordinates(query);
+    if (googleMapsLocation) {
+      setDraftLocation(googleMapsLocation);
+      setSearchLocation(googleMapsLocation);
+      setSelectionPulse((current) => current + 1);
+      setIsSearching(false);
+      return;
+    }
+
     try {
       const results = await searchPlaces(query, userLocation, language);
       const result = results[0];
@@ -367,7 +414,35 @@ export default function MapPage() {
         onDraftLocationChange={setDraftLocation}
         onMapClick={handleMapSelection}
         onReportSelect={setSelectedReport}
+        onBoundsChange={setReportBounds}
       />
+
+      <div className="map-legend" aria-label={copy.severity}>
+        <div className="map-legend-title">{copy.severity}</div>
+        <div className="map-legend-items">
+          <span>
+            <i
+              className="map-legend-dot map-legend-caution"
+              aria-hidden="true"
+            />
+            {copy.severityLabel.caution}
+          </span>
+          <span>
+            <i
+              className="map-legend-dot map-legend-dangerous"
+              aria-hidden="true"
+            />
+            {copy.severityLabel.dangerous}
+          </span>
+          <span>
+            <i
+              className="map-legend-dot map-legend-blocked"
+              aria-hidden="true"
+            />
+            {copy.severityLabel.blocked}
+          </span>
+        </div>
+      </div>
 
       <Sidebar
         open={sidebarOpen}
@@ -393,7 +468,7 @@ export default function MapPage() {
                   id="location-prompt-title"
                   className="text-xl font-bold text-slate-900"
                 >
-                  Localisation
+                  {copy.locationPromptTitle}
                 </h2>
                 <div className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
                   <p dir="rtl">{translations.ar.locationPromptBody}</p>
@@ -417,7 +492,9 @@ export default function MapPage() {
                 disabled={locationRequesting}
                 className="min-h-12 rounded-xl bg-green-500 px-4 text-sm font-bold text-white transition-colors hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:cursor-wait disabled:opacity-70"
               >
-                {locationRequesting ? copy.locationRequesting : "Autoriser"}
+                {locationRequesting
+                  ? copy.locationRequesting
+                  : copy.allowLocation}
               </button>
               <button
                 type="button"
@@ -425,7 +502,7 @@ export default function MapPage() {
                 disabled={locationRequesting}
                 className="min-h-12 rounded-xl bg-red-500 text-sm font-bold text-slate-100 transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:opacity-60"
               >
-                Continuer sans localisation
+                {copy.continueWithoutLocation}
               </button>
             </div>
           </div>
@@ -456,12 +533,12 @@ export default function MapPage() {
           aria-controls="map-search-suggestions"
           aria-busy={isSuggesting}
           placeholder={copy.searchPlaceholder}
-          className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white/95 px-4 text-base text-slate-900 shadow-lg outline-none placeholder:text-slate-500 focus:ring-2 focus:ring-slate-900"
+          className="min-h-12 min-w-0 flex-1 rounded-2xl border border-white/70 bg-white/90 px-4 text-base text-slate-900 shadow-[0_10px_30px_rgba(15,40,60,0.16)] outline-none backdrop-blur-xl placeholder:text-slate-500 focus:ring-2 focus:ring-[#03AB82]"
         />
         <button
           type="submit"
           disabled={isSearching || !searchQuery.trim()}
-          className="min-h-11 shrink-0 rounded-xl bg-slate-900 px-4 text-sm font-medium text-white shadow-lg transition-colors hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+          className="min-h-12 shrink-0 rounded-2xl bg-[#0F283C] px-4 text-sm font-bold text-white shadow-[0_10px_30px_rgba(15,40,60,0.2)] transition-all hover:-translate-y-0.5 hover:bg-[#173B55] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#03AB82] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSearching ? copy.searching : copy.searchSubmit}
         </button>
@@ -496,10 +573,47 @@ export default function MapPage() {
         )}
       </form>
 
+      <div className="filter-bar absolute left-1/2 top-[9.15rem] z-[1100] flex w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 gap-2 md:top-[9.7rem]">
+        <label className="filter-control">
+          <span>{copy.hazardType}</span>
+          <select
+            value={reportTypeFilter}
+            onChange={(event) =>
+              setReportTypeFilter(event.target.value as ReportType | "all")
+            }
+          >
+            <option value="all">{copy.allTypes}</option>
+            {REPORT_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {copy.type[type]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="filter-control">
+          <span>{copy.severity}</span>
+          <select
+            value={reportSeverityFilter}
+            onChange={(event) =>
+              setReportSeverityFilter(
+                event.target.value as ReportSeverity | "all",
+              )
+            }
+          >
+            <option value="all">{copy.allSeverities}</option>
+            {REPORT_SEVERITIES.map((severity) => (
+              <option key={severity} value={severity}>
+                {copy.severityLabel[severity]}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       {searchError && (
         <p
           role="status"
-          className="absolute left-1/2 top-[9rem] z-[1200] -translate-x-1/2 rounded-lg bg-red-700 px-3 py-2 text-center text-sm text-white shadow-lg md:top-[9.5rem]"
+          className="absolute left-1/2 top-[12.5rem] z-[1200] -translate-x-1/2 rounded-lg bg-red-700 px-3 py-2 text-center text-sm text-white shadow-lg md:top-[13rem]"
         >
           {copy.searchError}
         </p>
@@ -587,6 +701,14 @@ export default function MapPage() {
                 {copy.clearNow}
               </button>
             </div>
+            <button
+              type="button"
+              disabled={flagMutation.isPending}
+              onClick={() => flagMutation.mutate(selectedReport.id)}
+              className="mt-3 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:cursor-wait disabled:opacity-60"
+            >
+              {flagMutation.isPending ? copy.flagging : copy.flagReport}
+            </button>
           </div>
         </BottomSheet>
       )}
@@ -600,18 +722,22 @@ export default function MapPage() {
               : "bg-red-700 text-white"
           }`}
         >
-          {actionMessage === "success" ? copy.reportSuccess : copy.reportError}
+          {actionMessage === "success"
+            ? copy.reportSuccess
+            : actionMessage === "flag-success"
+              ? copy.flagSent
+              : copy.reportError}
         </div>
       )}
 
       {isLoading && (
-        <div className="absolute left-1/2 top-[9rem] z-[1200] -translate-x-1/2 rounded bg-white/95 px-3 py-2 text-center text-sm text-slate-700 shadow-lg ring-1 ring-slate-200 md:top-[9.5rem]">
+        <div className="absolute left-1/2 top-[12.5rem] z-[1200] -translate-x-1/2 rounded bg-white/95 px-3 py-2 text-center text-sm text-slate-700 shadow-lg ring-1 ring-slate-200 md:top-[13rem]">
           {copy.loading}
         </div>
       )}
 
       {isError && (
-        <div className="absolute left-1/2 top-[9rem] z-[1200] -translate-x-1/2 rounded bg-red-100 px-3 py-2 text-center text-sm text-red-800 shadow-lg ring-1 ring-red-200 md:top-[9.5rem]">
+        <div className="absolute left-1/2 top-[12.5rem] z-[1200] -translate-x-1/2 rounded bg-red-100 px-3 py-2 text-center text-sm text-red-800 shadow-lg ring-1 ring-red-200 md:top-[13rem]">
           {copy.loadError}
         </div>
       )}

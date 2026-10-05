@@ -117,6 +117,65 @@ body {
   isolation: isolate;
 }
 
+.map-legend {
+  position: absolute;
+  left: 0.75rem;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem);
+  z-index: 1000;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: 1rem;
+  background: rgb(248 248 246 / 90%);
+  box-shadow: 0 10px 28px rgb(15 40 60 / 16%);
+  color: var(--color-ink);
+  backdrop-filter: blur(14px);
+}
+
+.map-legend-title {
+  margin-bottom: 0.45rem;
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.map-legend-items {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.map-legend-items span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.map-legend-dot {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border: 2px solid white;
+  border-radius: 999px;
+  box-shadow: 0 1px 4px rgb(15 40 60 / 25%);
+}
+
+.map-legend-caution {
+  background: #facc15;
+}
+
+.map-legend-dangerous {
+  background: #ef4444;
+}
+
+.map-legend-blocked {
+  background: #111827;
+}
+
 @keyframes search-suggestions-in {
   from {
     opacity: 0;
@@ -132,9 +191,132 @@ body {
   animation: search-suggestions-in 160ms ease-out;
 }
 
+.filter-bar {
+  pointer-events: none;
+}
+
+.filter-control {
+  pointer-events: auto;
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 0.2rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: 0.9rem;
+  background: rgb(248 248 246 / 88%);
+  box-shadow: 0 8px 22px rgb(15 40 60 / 12%);
+  backdrop-filter: blur(12px);
+}
+
+.filter-control span {
+  color: var(--color-muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.filter-control select {
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: #dbe7e8;
   touch-action: none;
   overscroll-behavior: contain;
+}
+
+.t3adi-pin-wrapper {
+  background: transparent;
+  border: 0;
+}
+
+.t3adi-pin {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 50% 50% 50% 0;
+  background: var(--pin-color);
+  border: 2px solid rgb(255 255 255 / 96%);
+  box-shadow: 0 2px 8px rgb(15 40 60 / 25%);
+  transform: rotate(-45deg);
+  transition:
+    transform 160ms ease,
+    filter 160ms ease;
+}
+
+.t3adi-pin-core {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 90%);
+  transform: rotate(45deg);
+}
+
+.leaflet-marker-icon:hover .t3adi-pin {
+  filter: brightness(1.08);
+  transform: rotate(-45deg) scale(1.12);
+}
+
+.map-control-panel {
+  position: absolute;
+  top: 5.75rem;
+  right: 0.75rem;
+  z-index: 500;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.map-control-button {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border: 1px solid rgb(15 40 60 / 12%);
+  border-radius: 0.9rem;
+  background: rgb(248 248 246 / 94%);
+  color: var(--color-ink);
+  box-shadow: 0 8px 22px rgb(15 40 60 / 15%);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  backdrop-filter: blur(12px);
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.map-control-button:hover:not(:disabled) {
+  background: white;
+  box-shadow: 0 10px 26px rgb(15 40 60 / 22%);
+  transform: translateY(-1px);
+}
+
+.map-control-button:focus-visible {
+  outline: 3px solid rgb(3 171 130 / 45%);
+  outline-offset: 2px;
+}
+
+.map-control-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.map-control-location {
+  margin-top: 0.3rem;
+  color: #087f68;
+  font-size: 1.35rem;
 }
 
 @keyframes selected-pin-drop {
@@ -172,6 +354,17 @@ body {
 
 .report-cta-jump {
   animation: report-cta-jump 500ms ease-out;
+}
+
+@media (max-width: 640px) {
+  .map-legend {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 5.75rem);
+  }
+
+  .map-legend-items {
+    gap: 0.55rem;
+    font-size: 0.66rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
