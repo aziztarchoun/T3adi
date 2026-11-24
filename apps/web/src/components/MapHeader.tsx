@@ -48,6 +48,7 @@ export default function MapHeader({
   return (
     <header
       dir="ltr"
+      aria-label={`${appName}. ${disclaimer}`}
       className="brand-header pointer-events-none fixed inset-x-0 top-0 z-[1200] h-[4.25rem] border-b border-[#FBB615]/30 bg-[#0F283C] shadow-[0_4px_22px_rgba(15,40,60,0.28)] md:h-20"
     >
       <div className="flex h-full w-full items-center gap-4 px-4 md:px-6">
@@ -56,7 +57,7 @@ export default function MapHeader({
             <img
               src={logoSrc}
               alt=""
-              className="h-12 w-12 shrink-0 object-contain"
+              className="h-10 w-10 shrink-0 object-contain md:h-12 md:w-12"
             />
           ) : (
             <div
@@ -82,7 +83,7 @@ export default function MapHeader({
               aria-haspopup="menu"
               aria-expanded={languageMenuOpen}
               onClick={() => setLanguageMenuOpen((open) => !open)}
-              className="header-control flex h-12 items-center gap-2 rounded-xl border border-[#FBB615]/40 bg-[#0F283C] px-3 text-sm font-semibold shadow-sm transition-colors hover:bg-[#173b55] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBB615]"
+              className="header-control flex h-11 items-center gap-2 rounded-2xl border border-[#FBB615]/40 bg-[#0F283C] px-3 text-sm font-semibold shadow-sm transition-colors hover:bg-[#173b55] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBB615]"
             >
               <span>{languageLabels[language]}</span>
               <span aria-hidden="true" className="text-xs">
@@ -122,7 +123,7 @@ export default function MapHeader({
             type="button"
             onClick={onMenuOpen}
             aria-label={menuLabel}
-            className="header-control flex h-12 w-12 items-center justify-center rounded-xl border border-[#FBB615]/40 bg-[#0F283C] text-xl shadow-sm transition-colors hover:bg-[#173b55] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBB615]"
+            className="header-control flex h-11 w-11 items-center justify-center rounded-2xl border border-[#FBB615]/40 bg-[#0F283C] text-xl shadow-sm transition-colors hover:bg-[#173b55] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBB615]"
           >
             <span aria-hidden="true">☰</span>
           </button>

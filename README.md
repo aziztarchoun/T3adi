@@ -34,10 +34,23 @@ API design all live in [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md).
 
 The current MVP includes the interactive map, geolocation, multilingual search,
 Google Maps coordinate-link search, report creation, viewport-based report
-loading, anonymous device identity, persistent PostgreSQL/PostGIS storage, and
-community voting. Authentication, moderation, automated freshness decay, and
-route hazard checking remain planned and are tracked in
+loading, anonymous device identity, persistent PostgreSQL/PostGIS storage,
+community voting, freshness decay, report flags, protected moderation API
+endpoints, a moderation dashboard, basic photo attachments, and an offline
+report queue. Optional accounts, reputation weighting, notifications, a
+moderated photo pipeline, fuller PWA offline support, and production
+operations remain planned and are tracked in
 [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md).
+
+The current route-risk preview accepts a destination coordinate, draws an
+advisory route, highlights nearby community hazards, and can hand the
+origin/destination to Google Maps. It does not guarantee a safe route and
+does not replace official instructions or navigation services.
+
+T3adi contains community-submitted data, not official road-condition
+information. Reports can be incomplete, malicious, or stale. Users should not
+interact with the map while driving and should follow official emergency and
+road-safety guidance.
 
 ## Tech stack
 
@@ -87,6 +100,12 @@ GitHub Pages hosts the frontend only. To enable live reports and search on the
 shared site, deploy the API separately and add a repository variable named
 `VITE_API_BASE_URL` containing its public HTTPS URL. Local development uses
 the Vite proxy and does not need this variable.
+
+For a public launch, use a managed PostgreSQL/PostGIS provider with automated
+backups, deploy the API on a low-cost managed Node host, configure a custom
+HTTPS domain and production `CORS_ORIGIN`, and verify the API health/readiness
+endpoints before sharing the frontend widely. Do not use the development
+database or placeholder secrets from `.env.example` in production.
 
 ## Project structure
 

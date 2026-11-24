@@ -42,6 +42,7 @@ type ReportRow = {
   type: ReportType;
   severity: ReportDto["severity"];
   description: string | null;
+  photo_url: string | null;
   status: ReportStatus;
   created_at: Date;
   last_confirmed_at: Date | null;
@@ -107,6 +108,7 @@ function toReportDto(row: ReportRow): ReportDto {
     type: row.type,
     severity: row.severity,
     description: row.description,
+    photoUrl: row.photo_url,
     status,
     createdAt: row.created_at.toISOString(),
     lastConfirmedAt: row.last_confirmed_at?.toISOString() ?? null,
@@ -144,6 +146,7 @@ const reportSelect = `
     r.type,
     r.severity,
     r.description,
+    r.photo_url,
     r.status,
     r.created_at,
     r.last_confirmed_at,
@@ -155,7 +158,7 @@ const reportSelect = `
 
 export async function listReports(
   bounds?: ReportBounds,
-  filters: ReportFilters = {},
+  filters: ReportFilters & { limit?: number } = {},
 ): Promise<ReportDto[]> {
   const conditions = ["r.status <> 'hidden'"];
   const values: Array<number | string> = [];
@@ -178,8 +181,9 @@ export async function listReports(
     `${reportSelect}
      WHERE ${conditions.join(" AND ")}
      GROUP BY r.id
-     ORDER BY r.created_at DESC`,
-    values,
+     ORDER BY r.created_at DESC
+     LIMIT $${values.length + 1}`,
+    [...values, filters.limit ?? 100],
   );
   return result.rows
     .map(toReportDto)
@@ -212,6 +216,10 @@ export async function createReport(
     );
 
     if (duplicate.rows[0]) {
+      const previousVote = await client.query<{ vote: CastVoteInput["vote"] }>(
+        "SELECT vote FROM confirmations WHERE report_id = $1 AND device_id = $2",
+        [duplicate.rows[0].id, deviceId],
+      );
       await client.query(
         `INSERT INTO confirmations (id, report_id, device_id, vote)
          VALUES ($1, $2, $3, 'confirm')
@@ -219,10 +227,18 @@ export async function createReport(
          DO UPDATE SET vote = 'confirm', created_at = now()`,
         [randomUUID(), duplicate.rows[0].id, deviceId],
       );
-      await client.query(
-        "UPDATE reports SET last_confirmed_at = now() WHERE id = $1",
-        [duplicate.rows[0].id],
-      );
+      if (previousVote.rows[0]?.vote !== "confirm") {
+        await client.query(
+          "UPDATE reports SET last_confirmed_at = now() WHERE id = $1",
+          [duplicate.rows[0].id],
+        );
+      }
+      if (input.photoUrl) {
+        await client.query(
+          "UPDATE reports SET photo_url = COALESCE(photo_url, $1) WHERE id = $2",
+          [input.photoUrl, duplicate.rows[0].id],
+        );
+      }
       const existing = await client.query<ReportRow>(
         `${reportSelect} WHERE r.id = $1 GROUP BY r.id`,
         [duplicate.rows[0].id],
@@ -234,8 +250,8 @@ export async function createReport(
     const id = randomUUID();
     await client.query(
       `INSERT INTO reports
-       (id, reporter_device_id, location, type, severity, description, last_confirmed_at)
-       VALUES ($1, $2, ST_SetSRID(ST_MakePoint($3, $4), 4326)::geography, $5, $6, $7, now())`,
+       (id, reporter_device_id, location, type, severity, description, photo_url, last_confirmed_at)
+       VALUES ($1, $2, ST_SetSRID(ST_MakePoint($3, $4), 4326)::geography, $5, $6, $7, $8, now())`,
       [
         id,
         deviceId,
@@ -244,6 +260,7 @@ export async function createReport(
         input.type,
         input.severity,
         input.description ?? null,
+        input.photoUrl ?? null,
       ],
     );
     await client.query(
@@ -283,6 +300,10 @@ export async function castVote(
       return null;
     }
 
+    const previousVote = await client.query<{ vote: CastVoteInput["vote"] }>(
+      "SELECT vote FROM confirmations WHERE report_id = $1 AND device_id = $2",
+      [reportId, deviceId],
+    );
     await client.query(
       `INSERT INTO confirmations (id, report_id, device_id, vote)
        VALUES ($1, $2, $3, $4)
@@ -291,7 +312,7 @@ export async function castVote(
       [randomUUID(), reportId, deviceId, input.vote],
     );
 
-    if (input.vote === "confirm") {
+    if (input.vote === "confirm" && previousVote.rows[0]?.vote !== "confirm") {
       await client.query(
         "UPDATE reports SET last_confirmed_at = now() WHERE id = $1",
         [reportId],

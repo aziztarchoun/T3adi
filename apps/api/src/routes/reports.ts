@@ -7,6 +7,7 @@ import {
   REPORT_SEVERITIES,
   REPORT_TYPES,
 } from "@road-safety-map/shared";
+import { photoUpload } from "../middleware/upload.js";
 import { writeRateLimit } from "../middleware/writeRateLimit.js";
 import {
   castVote,
@@ -16,19 +17,32 @@ import {
 } from "../services/reports.js";
 
 const router = Router();
-const boundsSchema = z.object({
-  south: z.coerce.number().min(-90).max(90),
-  west: z.coerce.number().min(-180).max(180),
-  north: z.coerce.number().min(-90).max(90),
-  east: z.coerce.number().min(-180).max(180),
-});
+const boundsSchema = z
+  .object({
+    south: z.coerce.number().min(-90).max(90),
+    west: z.coerce.number().min(-180).max(180),
+    north: z.coerce.number().min(-90).max(90),
+    east: z.coerce.number().min(-180).max(180),
+  })
+  .refine((bounds) => bounds.south <= bounds.north, {
+    message: "south must be less than or equal to north",
+  })
+  .refine((bounds) => bounds.west <= bounds.east, {
+    message: "west must be less than or equal to east",
+  });
 const filterSchema = z.object({
   type: z.enum(REPORT_TYPES).optional(),
   severity: z.enum(REPORT_SEVERITIES).optional(),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
 });
+const reportIdSchema = z.string().uuid();
+const deviceTokenSchema = z.string().trim().min(1).max(128);
 
-function deviceToken(req: Request) {
-  return req.get("x-device-token")?.trim() || undefined;
+function deviceToken(req: Request): string | undefined {
+  const value = req.get("x-device-token");
+  if (!value) return undefined;
+  const parsed = deviceTokenSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
 }
 
 router.get("/", async (req, res, next) => {
@@ -51,6 +65,20 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+router.post("/upload", writeRateLimit, (req, res) => {
+  photoUpload.single("photo")(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: "No photo file provided" });
+    }
+    return res.status(201).json({
+      photoUrl: `/uploads/${req.file.filename}`,
+    });
+  });
+});
+
 router.post("/", writeRateLimit, async (req, res, next) => {
   const parsed = createReportSchema.safeParse(req.body);
 
@@ -70,6 +98,10 @@ router.post("/", writeRateLimit, async (req, res, next) => {
 });
 
 router.post("/:id/confirmations", writeRateLimit, async (req, res, next) => {
+  const parsedId = reportIdSchema.safeParse(req.params.id);
+  if (!parsedId.success) {
+    return res.status(400).json({ error: "Invalid report ID" });
+  }
   const parsed = castVoteSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
@@ -79,7 +111,7 @@ router.post("/:id/confirmations", writeRateLimit, async (req, res, next) => {
   }
 
   try {
-    const report = await castVote(req.params.id, parsed.data, deviceToken(req));
+    const report = await castVote(parsedId.data, parsed.data, deviceToken(req));
     if (!report) return res.status(404).json({ error: "Report not found" });
     return res.json(report);
   } catch (error) {
@@ -88,6 +120,10 @@ router.post("/:id/confirmations", writeRateLimit, async (req, res, next) => {
 });
 
 router.post("/:id/flags", writeRateLimit, async (req, res, next) => {
+  const parsedId = reportIdSchema.safeParse(req.params.id);
+  if (!parsedId.success) {
+    return res.status(400).json({ error: "Invalid report ID" });
+  }
   const parsed = flagReportSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
@@ -98,7 +134,7 @@ router.post("/:id/flags", writeRateLimit, async (req, res, next) => {
 
   try {
     const flagged = await flagReport(
-      req.params.id,
+      parsedId.data,
       parsed.data.reason,
       deviceToken(req),
     );

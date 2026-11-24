@@ -96,6 +96,46 @@ describe("reports API", () => {
     });
   });
 
+  it("rejects invalid report IDs before querying the database", async () => {
+    const baseUrl = await startServer();
+
+    const response = await fetch(
+      `${baseUrl}/api/reports/not-a-uuid/confirmations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vote: "confirm" }),
+      },
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Invalid report ID" });
+  });
+
+  it("rejects inverted map bounds", async () => {
+    const baseUrl = await startServer();
+
+    const response = await fetch(
+      `${baseUrl}/api/reports?south=37&west=11&north=36&east=10`,
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Invalid map bounds" });
+  });
+
+  it("rejects invalid route coordinates", async () => {
+    const baseUrl = await startServer();
+
+    const response = await fetch(
+      `${baseUrl}/api/routes/risk?originLat=bad&originLng=10&destinationLat=36&destinationLng=10`,
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "Invalid route coordinates",
+    });
+  });
+
   it("accepts a new report submission", async () => {
     const baseUrl = await startServer();
 

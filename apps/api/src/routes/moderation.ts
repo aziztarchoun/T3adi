@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { requireModerator } from "../middleware/moderatorAuth.js";
-import { listOpenFlags, setReportVisibility } from "../services/moderation.js";
+import {
+  dismissFlags,
+  listOpenFlags,
+  setReportVisibility,
+} from "../services/moderation.js";
 
 const router = Router();
 router.use(requireModerator);
@@ -26,6 +30,16 @@ router.post("/reports/:id/hide", async (req, res, next) => {
 router.post("/reports/:id/unhide", async (req, res, next) => {
   try {
     const report = await setReportVisibility(req.params.id, "active", "unhide");
+    if (!report) return res.status(404).json({ error: "Report not found" });
+    return res.json(report);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/reports/:id/dismiss", async (req, res, next) => {
+  try {
+    const report = await dismissFlags(req.params.id);
     if (!report) return res.status(404).json({ error: "Report not found" });
     return res.json(report);
   } catch (error) {
