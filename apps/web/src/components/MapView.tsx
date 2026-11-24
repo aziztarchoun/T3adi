@@ -4,12 +4,14 @@ import {
   Circle,
   MapContainer,
   Marker,
+  Polyline,
   TileLayer,
   useMap,
   useMapEvents,
 } from "react-leaflet";
 import type { ReportDto } from "@road-safety-map/shared";
 import type { ReportBounds } from "../api/reports";
+import type { RouteRiskDto } from "@road-safety-map/shared";
 
 const TUNIS_CENTER: [number, number] = [36.8065, 10.1815];
 const DEFAULT_ZOOM = 12;
@@ -42,10 +44,10 @@ if (!MAPTILER_KEY && !CARTO_KEY && import.meta.env.DEV) {
 }
 
 const markerColors: Record<string, string> = {
-  safe: "#22c55e",
-  caution: "#facc15",
-  dangerous: "#ef4444",
-  blocked: "#111827",
+  safe: "var(--sev-safe)",
+  caution: "var(--sev-attention)",
+  dangerous: "var(--sev-danger)",
+  blocked: "var(--sev-blocked)",
   active: "#ef4444",
   resolved: "#22c55e",
   expired: "#94a3b8",
@@ -62,6 +64,13 @@ interface MapViewProps {
   selectionPulse?: number;
   onReportSelect?: (report: ReportDto) => void;
   onBoundsChange?: (bounds: ReportBounds) => void;
+  route?: RouteRiskDto | null;
+  mapLabels: {
+    mapControls: string;
+    zoomIn: string;
+    zoomOut: string;
+    centerLocation: string;
+  };
 }
 
 function createPinIcon(color: string, animated = false) {
@@ -172,18 +181,20 @@ function MapViewportHandler({
 
 function MapControls({
   userLocation,
+  labels,
 }: {
   userLocation?: { lat: number; lng: number } | null;
+  labels: MapViewProps["mapLabels"];
 }) {
   const map = useMap();
 
   return (
-    <div className="map-control-panel" aria-label="Map controls">
+    <div className="map-control-panel" aria-label={labels.mapControls}>
       <button
         type="button"
         className="map-control-button"
-        aria-label="Zoom in"
-        title="Zoom in"
+        aria-label={labels.zoomIn}
+        title={labels.zoomIn}
         onClick={() => map.zoomIn()}
       >
         <span aria-hidden="true">+</span>
@@ -191,8 +202,8 @@ function MapControls({
       <button
         type="button"
         className="map-control-button"
-        aria-label="Zoom out"
-        title="Zoom out"
+        aria-label={labels.zoomOut}
+        title={labels.zoomOut}
         onClick={() => map.zoomOut()}
       >
         <span aria-hidden="true">−</span>
@@ -200,8 +211,8 @@ function MapControls({
       <button
         type="button"
         className="map-control-button map-control-location"
-        aria-label="Center on my location"
-        title="Center on my location"
+        aria-label={labels.centerLocation}
+        title={labels.centerLocation}
         disabled={!userLocation}
         onClick={() => {
           if (!userLocation) return;
@@ -226,6 +237,8 @@ export default function MapView({
   selectionPulse = 0,
   onReportSelect,
   onBoundsChange,
+  route,
+  mapLabels,
 }: MapViewProps) {
   const markerRef = useRef<any>(null);
   const selectedPinIcon = useMemo(
@@ -262,7 +275,7 @@ export default function MapView({
     >
       <MapSizeHandler />
       <MapViewportHandler onBoundsChange={onBoundsChange} />
-      <MapControls userLocation={userLocation} />
+      <MapControls userLocation={userLocation} labels={mapLabels} />
       <MapClickHandler onMapClick={onMapClick} />
       <SearchLocationHandler location={searchLocation} />
       <UserLocationHandler location={userLocation} />
@@ -275,6 +288,13 @@ export default function MapView({
         maxZoom={20}
         attribution={TILE_ATTRIBUTION}
       />
+
+      {route && (
+        <Polyline
+          positions={route.geometry}
+          pathOptions={{ color: "#2563eb", weight: 5, opacity: 0.8 }}
+        />
+      )}
 
       {userLocation && (
         <Circle
@@ -309,7 +329,11 @@ export default function MapView({
 
       {reports.map((report) => {
         const tone =
-          report.severity === "blocked" ? "blocked" : report.severity;
+          report.status === "resolved"
+            ? "resolved"
+            : report.severity === "blocked"
+              ? "blocked"
+              : report.severity;
 
         return (
           <Marker

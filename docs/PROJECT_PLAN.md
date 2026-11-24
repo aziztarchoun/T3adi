@@ -9,6 +9,37 @@ tech stack, architecture, database design, algorithms, API, frontend, repo
 structure, and roadmap. It's meant to live in the repo as living
 documentation (`docs/PROJECT_PLAN.md`) and evolve as the project does.
 
+## Current implementation and launch direction
+
+The repository currently has the interactive map, report creation, viewport
+loading, location/search support, French/Arabic groundwork, anonymous device
+identity, community confirmations/disputes, freshness decay, report flags,
+protected moderation API endpoints, a moderation dashboard, basic photo
+attachments, and an offline report queue. Optional account authentication,
+reputation weighting, notifications, a moderated photo pipeline, fuller
+offline/PWA support, and production operations are not yet complete.
+
+An advisory route-risk preview is now implemented with an OSRM-compatible
+provider and a Google Maps handoff. It scores nearby current reports but never
+claims a route is safe. Photo attachments currently upload to local disk
+without object storage, image processing, retention rules, or a dedicated
+moderation queue; building that moderated pipeline remains a separate
+follow-up.
+
+The core product promise remains a fast, explainable signal about current road
+hazards: every report should communicate what was reported, how recently it
+was confirmed, how much community evidence exists, and when the information
+should no longer be trusted. Trust, moderation, accessibility, and production
+reliability take priority over adding photos, comments, social features, or
+turn-by-turn navigation.
+
+The public launch target is Tunisia-wide availability, with staged seeding and
+outreach by city, governorate, and major corridors to reduce the cold-start
+problem. The first audiences are daily drivers, taxi and delivery drivers, and
+the general public. T3adi remains free and open source initially; potential
+funding should favor grants, transparent sponsorships, and institutional
+partnerships over intrusive advertising or selling precise location data.
+
 ---
 
 ## Phase 1 — Understanding & Challenging the Idea

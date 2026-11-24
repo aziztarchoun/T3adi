@@ -51,6 +51,7 @@ export const createReportSchema = z.object({
   type: z.enum(REPORT_TYPES),
   severity: z.enum(REPORT_SEVERITIES),
   description: z.string().max(200).optional(),
+  photoUrl: z.string().max(1000).optional().nullable(),
 });
 export type CreateReportInput = z.infer<typeof createReportSchema>;
 
@@ -68,6 +69,7 @@ export interface ReportDto {
   type: ReportType;
   severity: ReportSeverity;
   description: string | null;
+  photoUrl?: string | null;
   status: ReportStatus;
   createdAt: string;
   lastConfirmedAt: string | null;
@@ -77,4 +79,41 @@ export interface ReportDto {
   confidence: number;
   /** Human-readable summary, e.g. "3 confirmations, last confirmed 4 minutes ago" */
   freshnessSummary: string;
+}
+
+export const routeRiskRequestSchema = z.object({
+  originLat: z.coerce.number().min(-90).max(90),
+  originLng: z.coerce.number().min(-180).max(180),
+  destinationLat: z.coerce.number().min(-90).max(90),
+  destinationLng: z.coerce.number().min(-180).max(180),
+});
+export type RouteRiskRequest = z.infer<typeof routeRiskRequestSchema>;
+
+export interface RouteHazard {
+  report: ReportDto;
+  distanceMeters: number;
+  riskContribution: number;
+}
+
+export interface RouteRiskDto {
+  geometry: Array<[number, number]>;
+  distanceMeters: number;
+  durationSeconds: number;
+  riskScore: number;
+  riskLabel: "low" | "moderate" | "high";
+  hazards: RouteHazard[];
+  advisory: string;
+}
+
+export interface OpenFlagDto {
+  id: string;
+  reportId: string;
+  reason: ReportFlagReason;
+  createdAt: string;
+  reportType: ReportType;
+  reportSeverity: ReportSeverity;
+  reportStatus: ReportStatus;
+  reportDescription: string | null;
+  reportPhotoUrl: string | null;
+  flagCount: number;
 }

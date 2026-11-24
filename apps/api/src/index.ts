@@ -3,8 +3,10 @@ import dotenv from "dotenv";
 import express, { type ErrorRequestHandler } from "express";
 import helmet from "helmet";
 import { closeDatabase, pool } from "./db/client.js";
+import { getUploadsDir } from "./middleware/upload.js";
 import moderationRouter from "./routes/moderation.js";
 import reportsRouter from "./routes/reports.js";
+import routesRouter from "./routes/routes.js";
 import searchRouter from "./routes/search.js";
 
 dotenv.config({ path: process.env.DOTENV_CONFIG_PATH ?? "../../.env" });
@@ -17,13 +19,20 @@ export function createApp() {
     .filter(Boolean);
 
   app.set("trust proxy", 1);
-  app.use(helmet());
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+    }),
+  );
   app.use(
     cors({
       origin: allowedOrigins,
     }),
   );
   app.use(express.json({ limit: "32kb" }));
+
+  // Static files for uploaded photos
+  app.use("/uploads", express.static(getUploadsDir()));
 
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok" });
@@ -39,6 +48,7 @@ export function createApp() {
   });
 
   app.use("/api/reports", reportsRouter);
+  app.use("/api/routes", routesRouter);
   app.use("/api/moderation", moderationRouter);
   app.use("/api/search", searchRouter);
 

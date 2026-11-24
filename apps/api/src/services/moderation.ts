@@ -1,28 +1,24 @@
 import { randomUUID } from "node:crypto";
+import type {
+  OpenFlagDto,
+  ReportFlagReason,
+  ReportSeverity,
+  ReportStatus,
+  ReportType,
+} from "@road-safety-map/shared";
 import { pool } from "../db/client.js";
-
-export interface OpenFlagDto {
-  id: string;
-  reportId: string;
-  reason: "inaccurate" | "spam" | "offensive";
-  createdAt: string;
-  reportType: string;
-  reportSeverity: string;
-  reportStatus: string;
-  reportDescription: string | null;
-  flagCount: number;
-}
 
 export async function listOpenFlags(): Promise<OpenFlagDto[]> {
   const result = await pool.query<{
     id: string;
     report_id: string;
-    reason: OpenFlagDto["reason"];
+    reason: ReportFlagReason;
     created_at: Date;
-    report_type: string;
-    report_severity: string;
-    report_status: string;
+    report_type: ReportType;
+    report_severity: ReportSeverity;
+    report_status: ReportStatus;
     report_description: string | null;
+    report_photo_url: string | null;
     flag_count: string;
   }>(
     `SELECT
@@ -34,6 +30,7 @@ export async function listOpenFlags(): Promise<OpenFlagDto[]> {
        r.severity AS report_severity,
        r.status AS report_status,
        r.description AS report_description,
+       r.photo_url AS report_photo_url,
        COUNT(all_flags.id) AS flag_count
      FROM flags f
      JOIN reports r ON r.id = f.report_id
@@ -53,6 +50,7 @@ export async function listOpenFlags(): Promise<OpenFlagDto[]> {
     reportSeverity: row.report_severity,
     reportStatus: row.report_status,
     reportDescription: row.report_description,
+    reportPhotoUrl: row.report_photo_url,
     flagCount: Number(row.flag_count),
   }));
 }
@@ -85,6 +83,40 @@ export async function setReportVisibility(
     );
     await client.query("COMMIT");
     return updated.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function dismissFlags(
+  reportId: string,
+): Promise<{ id: string; status: string } | null> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const report = await client.query<{ id: string; status: string }>(
+      "SELECT id, status FROM reports WHERE id = $1",
+      [reportId],
+    );
+    if (!report.rows[0]) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    await client.query(
+      `INSERT INTO moderation_actions (id, report_id, action)
+       VALUES ($1, $2, 'dismiss')`,
+      [randomUUID(), reportId],
+    );
+    await client.query(
+      "UPDATE flags SET resolved = true WHERE report_id = $1",
+      [reportId],
+    );
+    await client.query("COMMIT");
+    return report.rows[0];
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;

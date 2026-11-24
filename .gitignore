@@ -21,4 +21,8 @@ npm-debug.log*
 # OS
 .DS_Store
 
+# Uploaded media
+uploads/
+apps/api/uploads/
+
 # Docker volumes are managed by Docker itself, nothing to ignore here
